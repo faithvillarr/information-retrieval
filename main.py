@@ -2,8 +2,29 @@ import nltk
 import math
 from nltk.tokenize import word_tokenize, sent_tokenize
 
-# GENERAL FUNCTIONS
-
+closed_class_stop_words = ['a','the','an','and','or','but','about','above','after','along','amid','among',\
+                           'as','at','by','for','from','in','into','like','minus','near','of','off','on',\
+                           'onto','out','over','past','per','plus','since','till','to','under','until','up',\
+                           'via','vs','with','that','can','cannot','could','may','might','must',\
+                           'need','ought','shall','should','will','would','have','had','has','having','be',\
+                           'is','am','are','was','were','being','been','get','gets','got','gotten',\
+                           'getting','seem','seeming','seems','seemed',\
+                           'enough', 'both', 'all', 'your' 'those', 'this', 'these', \
+                           'their', 'the', 'that', 'some', 'our', 'no', 'neither', 'my',\
+                           'its', 'his' 'her', 'every', 'either', 'each', 'any', 'another',\
+                           'an', 'a', 'just', 'mere', 'such', 'merely' 'right', 'no', 'not',\
+                           'only', 'sheer', 'even', 'especially', 'namely', 'as', 'more',\
+                           'most', 'less' 'least', 'so', 'enough', 'too', 'pretty', 'quite',\
+                           'rather', 'somewhat', 'sufficiently' 'same', 'different', 'such',\
+                           'when', 'why', 'where', 'how', 'what', 'who', 'whom', 'which',\
+                           'whether', 'why', 'whose', 'if', 'anybody', 'anyone', 'anyplace', \
+                           'anything', 'anytime' 'anywhere', 'everybody', 'everyday',\
+                           'everyone', 'everyplace', 'everything' 'everywhere', 'whatever',\
+                           'whenever', 'whereever', 'whichever', 'whoever', 'whomever' 'he',\
+                           'him', 'his', 'her', 'she', 'it', 'they', 'them', 'its', 'their','theirs',\
+                           'you','your','yours','me','my','mine','I','we','us','much','and/or', \
+                           '.', ';'
+                           ]
 
 # FUNCTIONS FOR IMPORTING INFORMATION
 def get_queries_dict(filepath):
@@ -109,7 +130,6 @@ def cosine_similarity(vec1, vec2): # vec1 must be query
 
 def normalize_vec(vec):
     # Normalize word counts for query length
-    # ? Make nouns weighted more?
     inst_total = sum(vec.values())
     for key in vec.keys():
         vec[key] = vec[key] / inst_total
@@ -123,16 +143,19 @@ def vec_from_text(text):
     tagged = nltk.pos_tag(wordsList)
 
     # 'tagged' holds pairs of ('word', 'POS tag')
-    tags_to_keep = ['FW', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NP', 'NPS', 'RB', 'RBR', 'RBS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
+    tags_to_keep = [] # ['FW', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NP', 'NPS', 'RB', 'RBR', 'RBS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
     res_vec = {} # {'word' : # of instances in this query}
 
     # Count frequency of words and store in query_vecs
     for word, tag in tagged:
-        if tag in tags_to_keep:
+        if tag not in tags_to_keep and word not in closed_class_stop_words:
             # We have found a word we want to count at this point
             if word not in res_vec:
                 res_vec[word] = 0
             res_vec[word] += 1
+
+    # for key, val in res_vec.items():
+    #     res_vec[key] = val / len(text)
 
     return res_vec #dictionary ('word' : count)    
 
@@ -157,26 +180,43 @@ if __name__ == "__main__":
         doc_dict = { doc_id   : {'word': frequency in decimal }}
     '''
 
-    s = 0
     print("Writing similarity scores...")
+    f = open("output-b.txt", 'a')
+
     for q_key, q_vec in que_dict.items():
+        q_results = []
+        count = 0
         for d_key, d_vec in doc_dict.items():
-            # Get cosine sim of each vector pair
+            # Get cosine similarity of each vector pair
             cos_sim = cosine_similarity(q_vec, d_vec)
+            q_results.append([q_key, d_key, cos_sim])
+        
+        # Sort by cosine sim score
+        q_results.sort(key=lambda x: x[2], reverse=True)
+        
+        # Now we have all results stored in a list. 
+        # We need to sort the outputs based on cosine which is the third index. 
+        for q_id, d_id, score in q_results:
+            if True: #score != 0 or count < 101:
+                f.write(f"{q_id} {d_id} {score}\n")
+                count += 1
 
-            # Write to output
-            f = open("output.txt", 'a')
+    f.close()
 
-            # Define what we want to write
-            new_line = str(q_key) + " " + str(d_key) + " " + str(round(cos_sim, 3)) + "\n"
 
-            # Write to file
-            if cos_sim != 0: f.write(new_line)
-            f.close()
+
+        # # Write to output
+
+        # # Define what we want to write
+        # new_line = str(q_key) + " " + str(d_key) + " " + str(round(cos_sim, 3)) + "\n"
+
+        # # Write to file
+        # if cos_sim != 0: f.write(new_line)
+        # f.close()
 
     
         
-    # for i in range(1, 4):
+    # for i in range(1, 3):
     #     if i in doc_dict.keys():
     #         print("DOC: ", doc_dict[i])
     #     if i in que_dict.keys():
@@ -187,26 +227,4 @@ if __name__ == "__main__":
     QueryID DocID Cosine Score
     '''
 
-    # doc_vecs = {} # { int doc_id : {words : count}}""
-    # for i in range(1, 1401):
-    #     # if i % 100 == 0: print(f"On doc {i}...")
-    #     doc_text = get_doc_text('Cranfield_collection_HW\cran.all.1400', i)
-
-    #     doc_vec = vec_from_text(doc_text)
-    #     if 1 < i < 5: print(i, doc_vec)
-    #     doc_vecs[i] = doc_vec
-
-    # print(f'Num of Docs Found: {len(doc_vecs.keys())}')
-    # query_num = 10
-    # for key in doc_vec.keys():
-    #     sim_score = cosine_similarity(doc_vecs[key], queries[query_num])
-
-    #     f = open("train-output.txt", "a")
-    #     output_str = str(int(query_num)) + " " + str(key) + " " + str(round(sim_score, 3)) + "\n"
-    #     print(f'Adding line: {output_str}')
-    #     f.write(output_str)
-    #     f.close()
-
-    # Now queries = {'query_num' : {'word_1': freq as percent of q_len }}
-    # We can be done with queries for now. 
 
