@@ -1,6 +1,8 @@
 import nltk
 import math
 from nltk.tokenize import word_tokenize, sent_tokenize
+nltk.download('wordnet')
+from nltk.stem import WordNetLemmatizer # for stemming attempt
 
 closed_class_stop_words = ['a','the','an','and','or','but','about','above','after','along','amid','among',\
                            'as','at','by','for','from','in','into','like','minus','near','of','off','on',\
@@ -146,10 +148,14 @@ def vec_from_text(text):
     tags_to_keep = [] # ['FW', 'JJ', 'JJR', 'JJS', 'NN', 'NNS', 'NP', 'NPS', 'RB', 'RBR', 'RBS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
     res_vec = {} # {'word' : # of instances in this query}
 
+    # To address stemming. 
+    lemmatizer = WordNetLemmatizer()
+
     # Count frequency of words and store in query_vecs
     for word, tag in tagged:
         if tag not in tags_to_keep and word not in closed_class_stop_words:
             # We have found a word we want to count at this point
+            word = lemmatizer.lemmatize(word)
             if word not in res_vec:
                 res_vec[word] = 0
             res_vec[word] += 1
@@ -181,11 +187,10 @@ if __name__ == "__main__":
     '''
 
     print("Writing similarity scores...")
-    f = open("output-b.txt", 'a')
+    f = open("output.txt", 'a')
 
     for q_key, q_vec in que_dict.items():
         q_results = []
-        count = 0
         for d_key, d_vec in doc_dict.items():
             # Get cosine similarity of each vector pair
             cos_sim = cosine_similarity(q_vec, d_vec)
@@ -196,35 +201,13 @@ if __name__ == "__main__":
         
         # Now we have all results stored in a list. 
         # We need to sort the outputs based on cosine which is the third index. 
+        count = 0
         for q_id, d_id, score in q_results:
-            if True: #score != 0 or count < 101:
-                f.write(f"{q_id} {d_id} {score}\n")
-                count += 1
+            # if count < 50:  # By printing only the first 500 scores, there was a substantial increase in MAP score. 
+            f.write(f"{q_id} {d_id} {score}\n")
+            count += 1
 
-    f.close()
+    f.close()    
 
-
-
-        # # Write to output
-
-        # # Define what we want to write
-        # new_line = str(q_key) + " " + str(d_key) + " " + str(round(cos_sim, 3)) + "\n"
-
-        # # Write to file
-        # if cos_sim != 0: f.write(new_line)
-        # f.close()
-
-    
-        
-    # for i in range(1, 3):
-    #     if i in doc_dict.keys():
-    #         print("DOC: ", doc_dict[i])
-    #     if i in que_dict.keys():
-    #         print("QUE: ", que_dict[i])
-    
-
-    '''
-    QueryID DocID Cosine Score
-    '''
 
 
